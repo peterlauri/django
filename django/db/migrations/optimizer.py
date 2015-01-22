@@ -107,6 +107,17 @@ class MigrationOptimizer(object):
                 migrations.RenameField,
                 self.reduce_rename_field_self,
             ),
+            # TODO: should review how the optimize algoritm works, to get acual expected behavior
+            (
+                migrations.AddField,
+                migrations.AddField,
+                self.reduce_add_field_add_field,
+            ),
+            (
+                migrations.AddField,
+                migrations.AddFieldList,
+                self.reduce_add_field_add_field_list,
+            ),
         ]
 
     def optimize(self, operations, app_label=None):
@@ -306,6 +317,27 @@ class MigrationOptimizer(object):
                     model_name=operation.model_name,
                     name=operation.name,
                     field=other.field,
+                )
+            ]
+
+    def reduce_add_field_add_field(self, operation, other, in_between):
+        if operation.model_name_lower == other.model_name_lower:
+            return [
+                migrations.AddFieldList(
+                    model_name=operation.model_name,
+                    field_list=[
+                        (operation.name, operation.field),
+                        (other.name, other.field),
+                    ]
+                )
+            ]
+
+    def reduce_add_field_add_field_list(self, operation, other, in_between):
+        if operation.model_name_lower == other.model_name_lower:
+            return [
+                migrations.AddFieldList(
+                    model_name=operation.model_name,
+                    field_list=other.field_list+[(other.name, other.field)]
                 )
             ]
 
